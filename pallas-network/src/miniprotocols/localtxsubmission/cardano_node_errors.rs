@@ -85,6 +85,16 @@ impl Decode<'_, NodeErrorDecoder> for ApplyTxError {
     }
 }
 
+impl Decode<'_, NodeErrorDecoder> for NodeError {
+    fn decode(d: &mut Decoder<'_>, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
+        let errors = <Vec<ApplyTxError>>::decode(d, ctx)?;
+        Ok(NodeError(
+            errors,
+            CBORErrorBytes(ctx.response_bytes.clone()),
+        ))
+    }
+}
+
 impl Encode<()> for NodeError {
     fn encode<W: minicbor::encode::Write>(
         &self,
