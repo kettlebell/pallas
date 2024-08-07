@@ -1,6 +1,6 @@
+use log::trace;
 use pallas_codec::minicbor::data::Tag;
 use pallas_codec::minicbor::{decode, encode, Decode, Decoder, Encode, Encoder};
-use tracing::trace;
 
 use crate::miniprotocols::localtxsubmission::{EraTx, Message};
 
