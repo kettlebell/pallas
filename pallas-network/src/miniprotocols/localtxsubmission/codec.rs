@@ -230,9 +230,9 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
     }
 }
 
-impl<'b, C> Decode<'b, C> for DecodingResult<Message<EraTx, Vec<ApplyTxError>>>
+impl<'b, C> Decode<'b, C> for DecodingResult<Message<EraTx, (Vec<ApplyTxError>, CBORErrorBytes)>>
 where
-    C: DecodeCBORSplitPayload<Entity = Message<EraTx, Vec<ApplyTxError>>>,
+    C: DecodeCBORSplitPayload<Entity = Message<EraTx, (Vec<ApplyTxError>, CBORErrorBytes)>>,
 {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         ctx.try_decode_with_new_bytes(d.input())
