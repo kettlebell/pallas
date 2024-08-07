@@ -144,7 +144,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
             if self.has_undecoded_bytes() {
                 Ok(DecodingResult::Incomplete(Message::RejectTx(errors)))
             } else {
-                panic!(
+                println!(
                     "cardano node raw error bytes: {}",
                     hex::encode(&self.response_bytes)
                 );
