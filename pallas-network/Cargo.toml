@@ -14,7 +14,7 @@ authors = ["Santiago Carmuega <santiago@carmuega.me>", "Pi Lanningham <pi.lannin
 byteorder = "1.4.3"
 hex = "0.4.3"
 itertools = "0.13.0"
-log = "0.4.22"
+log = "0.4"
 pallas-codec = { version = "=0.29.0", path = "../pallas-codec", features = ["half"] }
 pallas-crypto = { version = "=0.29.0", path = "../pallas-crypto" }
 pallas-primitives = { version = "=0.29.0", path = "../pallas-primitives" }
