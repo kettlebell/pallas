@@ -994,7 +994,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&buffer);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert_eq!(errors[0].node_errors.len(), 0);
         } else {
@@ -1058,7 +1058,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1072,7 +1072,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1107,7 +1107,7 @@ mod tests {
         .unwrap();
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1127,7 +1127,7 @@ mod tests {
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
         println!("{:?}", result);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1135,7 +1135,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&tail);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1151,7 +1151,7 @@ mod tests {
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
         println!("{:?}", result);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 2);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1171,7 +1171,7 @@ mod tests {
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bot_bytes_0);
         println!("{:?}", result);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1179,7 +1179,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&bot_bytes_1);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1219,7 +1219,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bot_bytes_0);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1227,7 +1227,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&bot_bytes_1);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1235,7 +1235,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&bot_bytes_2);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1243,7 +1243,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&dao_bytes_1);
-        if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
             assert_eq!(errors.len(), 2);
             assert!(!cc.has_undecoded_bytes());
         } else {

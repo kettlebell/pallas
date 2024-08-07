@@ -1,5 +1,5 @@
 pub use client::*;
-pub use codec::NodeErrorDecoder;
+pub use codec::{CBORErrorBytes, NodeErrorDecoder};
 pub use protocol::*;
 
 pub mod cardano_node_errors;

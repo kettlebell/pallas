@@ -96,6 +96,9 @@ pub struct NodeErrorDecoder {
     pub cbor_break_token_seen: bool,
 }
 
+#[derive(Clone, Debug)]
+pub struct CBORErrorBytes(pub Vec<u8>);
+
 impl NodeErrorDecoder {
     pub fn new() -> Self {
         Self {
@@ -114,7 +117,7 @@ impl Default for NodeErrorDecoder {
 }
 
 impl DecodeCBORSplitPayload for NodeErrorDecoder {
-    type Entity = Message<EraTx, Vec<ApplyTxError>>;
+    type Entity = Message<EraTx, (Vec<ApplyTxError>, CBORErrorBytes)>;
 
     fn try_decode_with_new_bytes(
         &mut self,
@@ -142,7 +145,10 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
             }
 
             if self.has_undecoded_bytes() {
-                Ok(DecodingResult::Incomplete(Message::RejectTx(errors)))
+                Ok(DecodingResult::Incomplete(Message::RejectTx((
+                    errors,
+                    CBORErrorBytes(self.response_bytes.clone()),
+                ))))
             } else {
                 println!(
                     "cardano node raw error bytes: {}",
@@ -152,7 +158,10 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                 self.cbor_break_token_seen = false;
                 self.ix_start_unprocessed_bytes = 0;
                 assert!(self.context_stack.is_empty());
-                Ok(DecodingResult::Complete(Message::RejectTx(errors)))
+                Ok(DecodingResult::Complete(Message::RejectTx((
+                    errors,
+                    CBORErrorBytes(self.response_bytes.clone()),
+                ))))
             }
         } else {
             // If it's not an error response then process it right here and return.
@@ -195,13 +204,19 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                     }
 
                     if self.has_undecoded_bytes() {
-                        Ok(DecodingResult::Incomplete(Message::RejectTx(errors)))
+                        Ok(DecodingResult::Incomplete(Message::RejectTx((
+                            errors,
+                            CBORErrorBytes(self.response_bytes.clone()),
+                        ))))
                     } else {
                         self.response_bytes.clear();
                         self.cbor_break_token_seen = false;
                         self.ix_start_unprocessed_bytes = 0;
                         assert!(self.context_stack.is_empty());
-                        Ok(DecodingResult::Complete(Message::RejectTx(errors)))
+                        Ok(DecodingResult::Complete(Message::RejectTx((
+                            errors,
+                            CBORErrorBytes(self.response_bytes.clone()),
+                        ))))
                     }
                 }
                 3 => Ok(DecodingResult::Complete(Message::Done)),
