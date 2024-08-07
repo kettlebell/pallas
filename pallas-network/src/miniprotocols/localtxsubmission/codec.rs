@@ -99,6 +99,9 @@ pub struct NodeErrorDecoder {
 #[derive(Clone, Debug)]
 pub struct CBORErrorBytes(pub Vec<u8>);
 
+#[derive(Clone, Debug)]
+pub struct NodeError(pub Vec<ApplyTxError>, pub CBORErrorBytes);
+
 impl NodeErrorDecoder {
     pub fn new() -> Self {
         Self {
@@ -117,7 +120,7 @@ impl Default for NodeErrorDecoder {
 }
 
 impl DecodeCBORSplitPayload for NodeErrorDecoder {
-    type Entity = Message<EraTx, (Vec<ApplyTxError>, CBORErrorBytes)>;
+    type Entity = Message<EraTx, NodeError>;
 
     fn try_decode_with_new_bytes(
         &mut self,
@@ -145,7 +148,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
             }
 
             if self.has_undecoded_bytes() {
-                Ok(DecodingResult::Incomplete(Message::RejectTx((
+                Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(
                     errors,
                     CBORErrorBytes(self.response_bytes.clone()),
                 ))))
@@ -158,7 +161,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                 self.cbor_break_token_seen = false;
                 self.ix_start_unprocessed_bytes = 0;
                 assert!(self.context_stack.is_empty());
-                Ok(DecodingResult::Complete(Message::RejectTx((
+                Ok(DecodingResult::Complete(Message::RejectTx(NodeError(
                     errors,
                     CBORErrorBytes(self.response_bytes.clone()),
                 ))))
@@ -204,7 +207,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                     }
 
                     if self.has_undecoded_bytes() {
-                        Ok(DecodingResult::Incomplete(Message::RejectTx((
+                        Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(
                             errors,
                             CBORErrorBytes(self.response_bytes.clone()),
                         ))))
@@ -213,7 +216,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                         self.cbor_break_token_seen = false;
                         self.ix_start_unprocessed_bytes = 0;
                         assert!(self.context_stack.is_empty());
-                        Ok(DecodingResult::Complete(Message::RejectTx((
+                        Ok(DecodingResult::Complete(Message::RejectTx(NodeError(
                             errors,
                             CBORErrorBytes(self.response_bytes.clone()),
                         ))))
@@ -230,9 +233,9 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
     }
 }
 
-impl<'b, C> Decode<'b, C> for DecodingResult<Message<EraTx, (Vec<ApplyTxError>, CBORErrorBytes)>>
+impl<'b, C> Decode<'b, C> for DecodingResult<Message<EraTx, NodeError>>
 where
-    C: DecodeCBORSplitPayload<Entity = Message<EraTx, (Vec<ApplyTxError>, CBORErrorBytes)>>,
+    C: DecodeCBORSplitPayload<Entity = Message<EraTx, NodeError>>,
 {
     fn decode(d: &mut Decoder<'b>, ctx: &mut C) -> Result<Self, decode::Error> {
         ctx.try_decode_with_new_bytes(d.input())

@@ -9,7 +9,10 @@ use pallas_codec::minicbor::{
 use pallas_primitives::conway::ScriptHash;
 use pallas_utxorpc::TxHash;
 
-use super::codec::NodeErrorDecoder;
+use super::{
+    codec::{NodeError, NodeErrorDecoder},
+    CBORErrorBytes,
+};
 
 /// https://github.com/IntersectMBO/cardano-ledger/blob/8fd7ab6ca9bcf9cdb1fa6f4059f84585a084efa5/eras/shelley/impl/src/Cardano/Ledger/Shelley/API/Mempool.hs#L221
 #[derive(Debug, Clone)]
@@ -82,7 +85,7 @@ impl Decode<'_, NodeErrorDecoder> for ApplyTxError {
     }
 }
 
-impl Encode<()> for ApplyTxError {
+impl Encode<()> for NodeError {
     fn encode<W: minicbor::encode::Write>(
         &self,
         _e: &mut minicbor::Encoder<W>,
@@ -984,7 +987,7 @@ mod tests {
 
     use crate::miniprotocols::localtxsubmission::{
         cardano_node_errors::NodeErrorDecoder,
-        codec::{DecodeCBORSplitPayload, DecodingResult},
+        codec::{DecodeCBORSplitPayload, DecodingResult, NodeError},
         Message,
     };
 
@@ -994,7 +997,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&buffer);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert_eq!(errors[0].node_errors.len(), 0);
         } else {
@@ -1058,7 +1061,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1072,7 +1075,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1107,7 +1110,7 @@ mod tests {
         .unwrap();
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1127,7 +1130,7 @@ mod tests {
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
         println!("{:?}", result);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1135,7 +1138,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&tail);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1151,7 +1154,7 @@ mod tests {
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bytes);
         println!("{:?}", result);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 2);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1171,7 +1174,7 @@ mod tests {
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bot_bytes_0);
         println!("{:?}", result);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1179,7 +1182,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&bot_bytes_1);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
@@ -1219,7 +1222,7 @@ mod tests {
 
         let mut cc = NodeErrorDecoder::new();
         let result = cc.try_decode_with_new_bytes(&bot_bytes_0);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1227,7 +1230,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&bot_bytes_1);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1235,7 +1238,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&bot_bytes_2);
-        if let Ok(DecodingResult::Incomplete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Incomplete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 1);
             assert!(cc.has_undecoded_bytes());
         } else {
@@ -1243,7 +1246,7 @@ mod tests {
         }
 
         let result = cc.try_decode_with_new_bytes(&dao_bytes_1);
-        if let Ok(DecodingResult::Complete(Message::RejectTx((errors, _)))) = result {
+        if let Ok(DecodingResult::Complete(Message::RejectTx(NodeError(errors, _)))) = result {
             assert_eq!(errors.len(), 2);
             assert!(!cc.has_undecoded_bytes());
         } else {
