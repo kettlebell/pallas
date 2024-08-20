@@ -1203,7 +1203,7 @@ mod tests {
         // contain a complete `ApplyTxError` instance.
         let result = cc.try_decode_with_new_bytes(&dao_bytes_0);
         if let Ok(DecodingResult::Incomplete(Message::RejectTx(errors))) = result {
-            assert_eq!(errors.len(), 0);
+            assert_eq!(errors.0.len(), 0);
             assert!(cc.has_undecoded_bytes());
         } else {
             panic!("");
@@ -1211,7 +1211,7 @@ mod tests {
 
         let result = cc.try_decode_with_new_bytes(&dao_bytes_1);
         if let Ok(DecodingResult::Complete(Message::RejectTx(errors))) = result {
-            assert_eq!(errors.len(), 1);
+            assert_eq!(errors.0.len(), 1);
             assert!(!cc.has_undecoded_bytes());
         } else {
             panic!("");

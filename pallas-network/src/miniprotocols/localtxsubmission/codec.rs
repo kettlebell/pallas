@@ -157,13 +157,14 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                     "cardano node raw error bytes: {}",
                     hex::encode(&self.response_bytes)
                 );
+                let response_bytes = self.response_bytes.clone();
                 self.response_bytes.clear();
                 self.cbor_break_token_seen = false;
                 self.ix_start_unprocessed_bytes = 0;
                 assert!(self.context_stack.is_empty());
                 Ok(DecodingResult::Complete(Message::RejectTx(NodeError(
                     errors,
-                    CBORErrorBytes(self.response_bytes.clone()),
+                    CBORErrorBytes(response_bytes),
                 ))))
             }
         } else {
@@ -212,13 +213,14 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                             CBORErrorBytes(self.response_bytes.clone()),
                         ))))
                     } else {
+                        let response_bytes = self.response_bytes.clone();
                         self.response_bytes.clear();
                         self.cbor_break_token_seen = false;
                         self.ix_start_unprocessed_bytes = 0;
                         assert!(self.context_stack.is_empty());
                         Ok(DecodingResult::Complete(Message::RejectTx(NodeError(
                             errors,
-                            CBORErrorBytes(self.response_bytes.clone()),
+                            CBORErrorBytes(response_bytes),
                         ))))
                     }
                 }
