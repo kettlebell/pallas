@@ -651,8 +651,9 @@ fn expect_indefinite_array(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Resul
             }
             ctx.context_stack.push(OuterScope::Definite(n));
             Err(Error::message(format!(
-                "Expected indefinite array, got array({})",
-                n
+                "Expected indefinite array, got array({}), response_bytes: {}",
+                n,
+                hex::encode(&ctx.response_bytes)
             )))
         }
         Err(e) => {
