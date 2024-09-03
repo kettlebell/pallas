@@ -90,10 +90,6 @@ pub struct NodeErrorDecoder {
     /// index in `response_bytes` that is also pointed to by the minicbor decoder after a
     /// _successful_ decoding of a `TxApplyErrors` instance.
     pub ix_start_unprocessed_bytes: usize,
-    /// This field is true if the current decoding of a `TXApplyErrors` instance is complete, which
-    /// only happens once the CBOR BREAK token is decoded to terminate the indefinite array which is
-    /// part of the `TxApplyErrors` encoded structure.
-    pub cbor_break_token_seen: bool,
 }
 
 impl NodeErrorDecoder {
@@ -102,7 +98,6 @@ impl NodeErrorDecoder {
             context_stack: vec![],
             response_bytes: vec![],
             ix_start_unprocessed_bytes: 0,
-            cbor_break_token_seen: false,
         }
     }
 }
@@ -149,7 +144,6 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                     hex::encode(&self.response_bytes)
                 );
                 self.response_bytes.clear();
-                self.cbor_break_token_seen = false;
                 self.ix_start_unprocessed_bytes = 0;
                 assert!(self.context_stack.is_empty());
                 Ok(DecodingResult::Complete(Message::RejectTx(errors)))
@@ -198,7 +192,6 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                         Ok(DecodingResult::Incomplete(Message::RejectTx(errors)))
                     } else {
                         self.response_bytes.clear();
-                        self.cbor_break_token_seen = false;
                         self.ix_start_unprocessed_bytes = 0;
                         assert!(self.context_stack.is_empty());
                         Ok(DecodingResult::Complete(Message::RejectTx(errors)))
