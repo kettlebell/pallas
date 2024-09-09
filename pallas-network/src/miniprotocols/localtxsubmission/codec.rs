@@ -176,7 +176,15 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                     loop {
                         match ApplyTxError::decode(&mut decoder, self) {
                             Ok(tx_err) => {
+                                let decoded_no_errors = tx_err.node_errors.is_empty();
                                 errors.push(tx_err);
+
+                                // If we haven't decoded any errors and there are still bytes
+                                // remaining to decode, we are probably dealing with an incomplete
+                                // script error.
+                                if self.has_undecoded_bytes() && decoded_no_errors {
+                                    break;
+                                }
                             }
                             Err(e) => {
                                 if !e.is_end_of_input() {
