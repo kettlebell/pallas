@@ -28,17 +28,17 @@ impl Decode<'_, NodeErrorDecoder> for ApplyTxError {
             }
         }
 
-        expect_definite_array(vec![2], d, ctx)?;
+        expect_definite_array(vec![2], d, ctx, "ApplyTxError_0")?;
         let tag = expect_u8(d, ctx)?;
         assert_eq!(tag, 2);
-        expect_definite_array(vec![1], d, ctx)?;
-        expect_definite_array(vec![2], d, ctx)?;
+        expect_definite_array(vec![1], d, ctx, "ApplyTxError_1")?;
+        expect_definite_array(vec![2], d, ctx, "ApplyTxError_2")?;
 
         // This tag is not totally understood (could represent the Cardano era).
         let _inner_tag = expect_u8(d, ctx)?;
 
-        // Here we expect an indefinite array
-        let num_errors = expect_definite_array(vec![], d, ctx)?;
+        // Here we expect a definite array or variable size
+        let num_errors = expect_definite_array(vec![], d, ctx, "ApplyTxError_3")?;
         // This top level array pop off context
         assert_eq!(
             ctx.context_stack.pop().unwrap(),
@@ -85,7 +85,7 @@ pub enum ConwayLedgerPredFailure {
 
 impl Decode<'_, NodeErrorDecoder> for ConwayLedgerPredFailure {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        if let Err(e) = expect_definite_array(vec![2], d, ctx) {
+        if let Err(e) = expect_definite_array(vec![2, 3], d, ctx, "ConwayLedgerPredFailure") {
             if e.is_end_of_input() {
                 return Err(e);
             }
@@ -160,7 +160,7 @@ pub enum ConwayUtxoPredFailure {
 
 impl Decode<'_, NodeErrorDecoder> for ConwayUtxoPredFailure {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        let arr_len = expect_definite_array(vec![2, 3], d, ctx)?;
+        let arr_len = expect_definite_array(vec![2, 3], d, ctx, "ConwayUtxoPredFailure")?;
         match expect_u8(d, ctx) {
             Ok(tag) => match tag {
                 0 if arr_len == 2 => {
@@ -222,7 +222,7 @@ pub enum ConwayUtxosPredFailure {
 
 impl Decode<'_, NodeErrorDecoder> for ConwayUtxosPredFailure {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        let arr_len = expect_definite_array(vec![2, 3], d, ctx)?;
+        let arr_len = expect_definite_array(vec![2, 3], d, ctx, "ConwayUtxosPredFailure")?;
         match expect_u8(d, ctx) {
             Ok(tag) => match tag {
                 0 => {
@@ -267,12 +267,17 @@ pub enum TagMismatchDescription {
 
 impl Decode<'_, NodeErrorDecoder> for TagMismatchDescription {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        expect_definite_array(vec![2], d, ctx)?;
+        expect_definite_array(vec![2], d, ctx, "TagMismatchDescription")?;
         match expect_u8(d, ctx) {
             Ok(tag) => match tag {
                 0 => Ok(TagMismatchDescription::PassUnexpectedly),
                 1 => {
-                    let num_failures = expect_definite_array(vec![], d, ctx)?;
+                    let num_failures = expect_definite_array(
+                        vec![],
+                        d,
+                        ctx,
+                        "TagMismatchDescription: # failures",
+                    )?;
                     let mut failures = Vec::with_capacity(num_failures as usize);
                     for _ in 0..num_failures {
                         let description = FailureDescription::decode(d, ctx)?;
@@ -309,7 +314,7 @@ pub struct FailureDescription {
 
 impl Decode<'_, NodeErrorDecoder> for FailureDescription {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        expect_definite_array(vec![3], d, ctx)?;
+        expect_definite_array(vec![3], d, ctx, "FailureDescription")?;
         match expect_u8(d, ctx) {
             Ok(tag) => {
                 if tag == 1 {
@@ -365,7 +370,7 @@ pub enum ConwayUtxowPredFailure {
 
 impl Decode<'_, NodeErrorDecoder> for ConwayUtxowPredFailure {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        expect_definite_array(vec![2, 3], d, ctx)?;
+        expect_definite_array(vec![2, 3], d, ctx, "ConwayUtxowPredFailure")?;
         match expect_u8(d, ctx) {
             Ok(tag) => match tag {
                 0 => {
@@ -391,71 +396,6 @@ impl Decode<'_, NodeErrorDecoder> for ConwayUtxowPredFailure {
     }
 }
 
-/// https://github.com/IntersectMBO/cardano-ledger/blob/8fd7ab6ca9bcf9cdb1fa6f4059f84585a084efa5/eras/shelley/impl/src/Cardano/Ledger/Shelley/Rules/Utxow.hs#L127
-#[derive(Debug, Clone)]
-pub enum ShelleyUtxowPredFailure {
-    InvalidWitnessesUTXOW,
-    /// Witnesses which failed in verifiedWits function
-    MissingVKeyWitnessesUTXOW(Vec<pallas_crypto::hash::Hash<28>>),
-    MissingScriptWitnessesUTXOW(Vec<ScriptHash>),
-    ScriptWitnessNotValidatingUTXOW(Vec<ScriptHash>),
-    UtxoFailure,
-    MIRInsufficientGenesisSigsUTXOW,
-    MissingTxBodyMetadataHash,
-    MissingTxMetadata,
-    ConflictingMetadataHash,
-    InvalidMetadata,
-    ExtraneousScriptWitnessesUTXOW(Vec<ScriptHash>),
-}
-
-impl Decode<'_, NodeErrorDecoder> for ShelleyUtxowPredFailure {
-    fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        expect_definite_array(vec![2], d, ctx)?;
-        match expect_u8(d, ctx) {
-            Ok(tag) => {
-                match tag {
-                    2 => {
-                        let missing_script_witnesses: Result<Vec<_>, _> = d.array_iter()?.collect();
-                        let missing_script_witnesses = missing_script_witnesses?;
-                        if let Some(OuterScope::Definite(n)) = ctx.context_stack.pop() {
-                            if n > 1 {
-                                ctx.context_stack.push(OuterScope::Definite(n - 1));
-                            }
-                        }
-                        Ok(ShelleyUtxowPredFailure::MissingScriptWitnessesUTXOW(
-                            missing_script_witnesses,
-                        ))
-                    }
-                    1 => {
-                        // MissingVKeyWitnessesUTXOW
-                        let missing_vkey_witnesses: Result<Vec<_>, _> = d.array_iter()?.collect();
-                        let missing_vkey_witnesses = missing_vkey_witnesses?;
-                        if let Some(OuterScope::Definite(n)) = ctx.context_stack.pop() {
-                            if n > 1 {
-                                ctx.context_stack.push(OuterScope::Definite(n - 1));
-                            }
-                        }
-                        Ok(ShelleyUtxowPredFailure::MissingVKeyWitnessesUTXOW(
-                            missing_vkey_witnesses,
-                        ))
-                    }
-                    _ => Err(Error::message("not BabbageUtxoPredFailure")),
-                }
-            }
-            Err(e) => {
-                if e.is_end_of_input() {
-                    Err(e)
-                } else {
-                    add_collection_token_to_context(d, ctx)?;
-                    Err(Error::message(
-                        "BabbageUtxoPredFailure::decode: expected tag",
-                    ))
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct TxInput {
     pub tx_hash: TxHash,
@@ -464,7 +404,7 @@ pub struct TxInput {
 
 impl Decode<'_, NodeErrorDecoder> for TxInput {
     fn decode(d: &mut Decoder, ctx: &mut NodeErrorDecoder) -> Result<Self, Error> {
-        expect_definite_array(vec![2], d, ctx)?;
+        expect_definite_array(vec![2], d, ctx, "TxInput")?;
         let bytes = expect_bytes(d, ctx)?;
         let tx_hash = TxHash::from(bytes.as_slice());
         match d.probe().int() {
@@ -586,6 +526,7 @@ fn expect_definite_array(
     possible_lengths: Vec<u64>,
     d: &mut Decoder,
     ctx: &mut NodeErrorDecoder,
+    calling_ctx: &str,
 ) -> Result<u64, Error> {
     match d.probe().array() {
         Ok(Some(len)) => {
@@ -600,8 +541,11 @@ fn expect_definite_array(
                 Ok(len)
             } else {
                 Err(Error::message(format!(
-                    "Expected array({:?}), got array({})",
-                    possible_lengths, len
+                    "Expected array({:?}), got array({}), calling_context: {}, response_bytes: {}",
+                    possible_lengths,
+                    len,
+                    calling_ctx,
+                    hex::encode(&ctx.response_bytes)
                 )))
             }
         }
@@ -609,8 +553,9 @@ fn expect_definite_array(
             let t = next_token(d)?;
             assert!(matches!(t, Token::BeginArray));
             Err(Error::message(format!(
-                "Expected array({:?}), got indefinite array",
-                possible_lengths,
+                "Expected array({:?}), got indefinite array, calling_context: {}, response_bytes: {}",
+                possible_lengths, calling_ctx,
+                    hex::encode(&ctx.response_bytes)
             )))
         }
         Err(e) => {
@@ -620,8 +565,10 @@ fn expect_definite_array(
             } else {
                 add_collection_token_to_context(d, ctx)?;
                 Err(Error::message(format!(
-                    "Expected array({:?})",
+                    "Expected array({:?}), calling_context: {}, response_bytes: {}",
                     possible_lengths,
+                    calling_ctx,
+                    hex::encode(&ctx.response_bytes)
                 )))
             }
         }
@@ -714,7 +661,7 @@ fn decode_conway_value(
                     Ok(Value::Coin(d.decode_with(ctx)?))
                 }
                 minicbor::data::Type::Array => {
-                    expect_definite_array(vec![2], d, ctx)?;
+                    expect_definite_array(vec![2], d, ctx, "decode_conway_value")?;
                     let coin = expect_u64(d, ctx)?;
                     let multiasset = d.decode_with(ctx)?;
                     // If multiasset is successfully decoded, let's manually update outer scope.
