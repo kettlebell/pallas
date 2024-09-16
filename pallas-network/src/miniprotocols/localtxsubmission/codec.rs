@@ -42,7 +42,7 @@ where
 #[derive(Debug)]
 pub enum DecodingResult<Entity> {
     Complete(Entity),
-    Incomplete(Entity),
+    Incomplete,
 }
 
 impl<Entity: Encode<()>> Encode<()> for DecodingResult<Entity> {
@@ -52,9 +52,8 @@ impl<Entity: Encode<()>> Encode<()> for DecodingResult<Entity> {
         _ctx: &mut (),
     ) -> Result<(), encode::Error<W::Error>> {
         match self {
-            DecodingResult::Complete(errors) | DecodingResult::Incomplete(errors) => {
-                errors.encode(e, _ctx)
-            }
+            DecodingResult::Complete(entity) => entity.encode(e, _ctx),
+            DecodingResult::Incomplete => unreachable!(),
         }
     }
 }
@@ -69,8 +68,6 @@ pub trait DecodeCBORSplitPayload {
         &mut self,
         bytes: &[u8],
     ) -> Result<DecodingResult<Self::Entity>, decode::Error>;
-    /// Returns true if there still remain CBOR bytes to be decoded.
-    fn has_undecoded_bytes(&self) -> bool;
 }
 
 /// Decodes Cardano node errors whose CBOR byte representation could be split over multiple
@@ -84,12 +81,6 @@ pub struct NodeErrorDecoder {
     /// Response bytes from the cardano node. Note that there are payload limits and so the bytes
     /// may be truncated.
     pub response_bytes: Vec<u8>,
-    /// This field is used to determine if there are still CBOR bytes that have yet to be decoded.
-    ///
-    /// It has a value of 0 if decoding has not yet started. Otherwise it takes the value of the
-    /// index in `response_bytes` that is also pointed to by the minicbor decoder after a
-    /// _successful_ decoding of a `TxApplyErrors` instance.
-    pub ix_start_unprocessed_bytes: usize,
 }
 
 impl NodeErrorDecoder {
@@ -97,7 +88,6 @@ impl NodeErrorDecoder {
         Self {
             context_stack: vec![],
             response_bytes: vec![],
-            ix_start_unprocessed_bytes: 0,
         }
     }
 }
@@ -109,110 +99,41 @@ impl Default for NodeErrorDecoder {
 }
 
 impl DecodeCBORSplitPayload for NodeErrorDecoder {
-    type Entity = Message<EraTx, Vec<ApplyTxError>>;
+    type Entity = Message<EraTx, ApplyTxError>;
 
     fn try_decode_with_new_bytes(
         &mut self,
         bytes: &[u8],
     ) -> Result<DecodingResult<Self::Entity>, decode::Error> {
-        if self.has_undecoded_bytes() {
-            self.response_bytes.extend_from_slice(bytes);
-            let bytes = self.response_bytes.clone();
-            let mut decoder = Decoder::new(&bytes);
-            let mut errors = vec![];
+        self.response_bytes.extend_from_slice(bytes);
 
-            loop {
-                match ApplyTxError::decode(&mut decoder, self) {
-                    Ok(tx_err) => {
-                        errors.push(tx_err);
-                    }
-                    Err(e) => {
-                        if !e.is_end_of_input() {
-                            return Err(e);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if self.has_undecoded_bytes() {
-                Ok(DecodingResult::Incomplete(Message::RejectTx(errors)))
-            } else {
-                trace!(
-                    "cardano node raw error bytes: {}",
-                    hex::encode(&self.response_bytes)
-                );
-                self.response_bytes.clear();
-                self.ix_start_unprocessed_bytes = 0;
-                assert!(self.context_stack.is_empty());
-                Ok(DecodingResult::Complete(Message::RejectTx(errors)))
-            }
-        } else {
-            // If it's not an error response then process it right here and return.
-            let mut d = Decoder::new(bytes);
-            let mut probe = d.probe();
-            if probe.array().is_err() {
-                // If we don't have any unprocessed bytes the first element should be an array
-                return Err(decode::Error::message(
-                    "Expecting an array (no unprocessed bytes)",
-                ));
-            }
-            let label = probe.u16()?;
-            match label {
-                0 => {
-                    d.array()?;
-                    d.u16()?;
-                    let tx = d.decode()?;
-                    Ok(DecodingResult::Complete(Message::SubmitTx(tx)))
-                }
-                1 => Ok(DecodingResult::Complete(Message::AcceptTx)),
-                2 => {
-                    self.response_bytes.extend_from_slice(bytes);
-                    let bytes = self.response_bytes.clone();
-                    let mut decoder = Decoder::new(&bytes);
-                    let mut errors = vec![];
-
-                    loop {
-                        match ApplyTxError::decode(&mut decoder, self) {
-                            Ok(tx_err) => {
-                                let decoded_no_errors = tx_err.node_errors.is_empty();
-                                errors.push(tx_err);
-
-                                // If we haven't decoded any errors and there are still bytes
-                                // remaining to decode, we are probably dealing with an incomplete
-                                // script error.
-                                if self.has_undecoded_bytes() && decoded_no_errors {
-                                    break;
-                                }
-                            }
-                            Err(e) => {
-                                if !e.is_end_of_input() {
-                                    return Err(e);
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if self.has_undecoded_bytes() {
-                        Ok(DecodingResult::Incomplete(Message::RejectTx(errors)))
-                    } else {
-                        self.response_bytes.clear();
-                        self.ix_start_unprocessed_bytes = 0;
-                        assert!(self.context_stack.is_empty());
-                        Ok(DecodingResult::Complete(Message::RejectTx(errors)))
-                    }
-                }
-                3 => Ok(DecodingResult::Complete(Message::Done)),
-                _ => Err(decode::Error::message("can't decode Message")),
-            }
+        let mut d = Decoder::new(&self.response_bytes);
+        let mut probe = d.probe();
+        if probe.array().is_err() {
+            // If we don't have any unprocessed bytes the first element should be an array
+            return Err(decode::Error::message("Expecting an array"));
         }
-    }
+        let label = probe.u16()?;
+        match label {
+            0 => {
+                d.array()?;
+                d.u16()?;
+                let tx = d.decode()?;
+                Ok(DecodingResult::Complete(Message::SubmitTx(tx)))
+            }
+            1 => Ok(DecodingResult::Complete(Message::AcceptTx)),
+            2 => {
+                let bytes = self.response_bytes.clone();
+                let mut decoder = Decoder::new(&bytes);
 
-    fn has_undecoded_bytes(&self) -> bool {
-        self.ix_start_unprocessed_bytes + 1 < self.response_bytes.len()
+                match ApplyTxError::decode(&mut decoder, self) {
+                    Ok(tx_err) => Ok(DecodingResult::Complete(Message::RejectTx(tx_err))),
+                    Err(_) => Ok(DecodingResult::Incomplete),
+                }
+            }
+            3 => Ok(DecodingResult::Complete(Message::Done)),
+            _ => Err(decode::Error::message("can't decode Message")),
+        }
     }
 }
 
