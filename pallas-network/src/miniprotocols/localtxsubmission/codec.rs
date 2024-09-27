@@ -111,6 +111,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
         let mut probe = d.probe();
         if probe.array().is_err() {
             // If we don't have any unprocessed bytes the first element should be an array
+            self.response_bytes.clear();
             return Err(decode::Error::message("Expecting an array"));
         }
         let label = probe.u16()?;
