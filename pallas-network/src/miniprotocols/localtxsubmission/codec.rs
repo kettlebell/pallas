@@ -110,7 +110,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
         let mut d = Decoder::new(&self.response_bytes);
         let mut probe = d.probe();
         if probe.array().is_err() {
-            // If we don't have any unprocessed bytes the first element should be an array
+            // Every node message is wrapped within a CBOR array, so we should never be here.
             self.response_bytes.clear();
             return Err(decode::Error::message("Expecting an array"));
         }
@@ -136,12 +136,13 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
             _ => Err(decode::Error::message("can't decode Message")),
         };
 
-        // Clear `response_bytes` buffer on a successful complete decoding of error, or a successful
-        // decoding of any other message.
+        // We only retain the state of `response_bytes` buffer in the case of an incomplete node
+        // error decoding, as we will wait for the remaining payloads to complete decoding. For all
+        // other cases - success or fail - we clear the buffer.
         if res.is_ok() {
             match res {
-                Ok(DecodingResult::Incomplete) | Err(_) => (),
-                Ok(_) => {
+                Ok(DecodingResult::Incomplete) => (),
+                _ => {
                     self.response_bytes.clear();
                 }
             }
