@@ -114,7 +114,7 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
             return Err(decode::Error::message("Expecting an array"));
         }
         let label = probe.u16()?;
-        match label {
+        let res = match label {
             0 => {
                 d.array()?;
                 d.u16()?;
@@ -133,7 +133,19 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
             }
             3 => Ok(DecodingResult::Complete(Message::Done)),
             _ => Err(decode::Error::message("can't decode Message")),
+        };
+
+        // Clear `response_bytes` buffer on a successful complete decoding of error, or a successful
+        // decoding of any other message.
+        if res.is_ok() {
+            match res {
+                Ok(DecodingResult::Incomplete) | Err(_) => (),
+                Ok(_) => {
+                    self.response_bytes.clear();
+                }
+            }
         }
+        res
     }
 }
 
