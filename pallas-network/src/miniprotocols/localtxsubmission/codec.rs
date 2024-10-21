@@ -128,7 +128,10 @@ impl DecodeCBORSplitPayload for NodeErrorDecoder {
                 let mut decoder = Decoder::new(&bytes);
 
                 match ApplyTxError::decode(&mut decoder, self) {
-                    Ok(tx_err) => Ok(DecodingResult::Complete(Message::RejectTx(tx_err))),
+                    Ok(tx_err) => {
+                        println!("ApplyTxError CBOR bytes: {}", hex::encode(&bytes));
+                        Ok(DecodingResult::Complete(Message::RejectTx(tx_err)))
+                    }
                     Err(_) => Ok(DecodingResult::Incomplete),
                 }
             }
