@@ -49,7 +49,10 @@ impl Decode<'_, NodeErrorDecoder> for ApplyTxError {
         for _ in 0..num_errors {
             match ConwayLedgerPredFailure::decode(d, ctx) {
                 Ok(err) => {
-                    assert!(ctx.context_stack.is_empty());
+                    if !ctx.context_stack.is_empty() {
+                        panic!("context_stack is supposed to be empty, instead it contains: {:?}, CBOR bytes: {}", 
+                        ctx.context_stack, hex::encode(&ctx.response_bytes));
+                    }
                     non_script_errors.push(err);
                 }
                 Err(e) => {
