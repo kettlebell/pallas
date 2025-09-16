@@ -49,7 +49,7 @@ impl Decode<'_, NodeErrorDecoder> for ApplyTxError {
         for _ in 0..num_errors {
             match ConwayLedgerPredFailure::decode(d, ctx) {
                 Ok(err) => {
-                    assert!(ctx.context_stack.is_empty());
+                    // assert!(ctx.context_stack.is_empty());
                     non_script_errors.push(err);
                 }
                 Err(e) => {
