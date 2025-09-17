@@ -7,6 +7,7 @@ use pallas_codec::minicbor::{
     Decode, Decoder, Encode,
 };
 use pallas_utxorpc::TxHash;
+use tracing::error;
 
 use super::codec::NodeErrorDecoder;
 
@@ -50,7 +51,7 @@ impl Decode<'_, NodeErrorDecoder> for ApplyTxError {
             match ConwayLedgerPredFailure::decode(d, ctx) {
                 Ok(err) => {
                     if !ctx.context_stack.is_empty() {
-                        panic!("context_stack is supposed to be empty, instead it contains: {:?}, CBOR bytes: {}", 
+                        error!("context_stack is supposed to be empty, instead it contains: {:?}, CBOR bytes: {}", 
                         ctx.context_stack, hex::encode(&ctx.response_bytes));
                     }
                     non_script_errors.push(err);
